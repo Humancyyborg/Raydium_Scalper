@@ -105,7 +105,7 @@ def predict_upward_movement(pair, debug=False):
     m5_volume = pair.get("volume", {}).get("m5", 0)
     details["m5_volume"] = m5_volume
 
-    SHORT_TERM_VOLUME_THRESHOLD = 500000  # Example threshold value
+    SHORT_TERM_VOLUME_THRESHOLD = 300000  # Example threshold value
     if m5_volume >= SHORT_TERM_VOLUME_THRESHOLD:
         score += 1
 
@@ -119,7 +119,7 @@ def predict_upward_movement(pair, debug=False):
     if debug:
         print("Debug Details:", json.dumps(details, indent=2))
 
-    THRESHOLD_SCORE = 5
+    THRESHOLD_SCORE = 4
     prediction = score >= THRESHOLD_SCORE
     return prediction, score
 
