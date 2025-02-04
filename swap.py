@@ -98,7 +98,7 @@ class TradingBot:
                         self.logger.error("Insufficient SOL balance")
                         return False
 
-                    trade_amount = sol_balance * Decimal('0.9')
+                    trade_amount = sol_balance * Decimal('0.5')
                     params = {
                         'fromMint': self.sol_mint,
                         'toMint': token_address,
@@ -319,3 +319,6 @@ class TradingBot:
         """Cleanup resources"""
         if self.session and not self.session.closed:
             await self.session.close()
+
+
+#https://gist.github.com/Humancyyborg/e663d66beec1f44942c10d31b27817d7
