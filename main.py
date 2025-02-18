@@ -11,37 +11,6 @@ from trend import TokenScanner
 # Load environment variables
 load_dotenv()
 
-
-def is_near_psychological_zone(market_cap: float, threshold_percentage: float = 0.20) -> bool:
-    """
-    Check if market cap is within threshold_percentage of any psychological zone.
-    Psychological zones are dynamically generated based on the order of magnitude of the market cap.
-    """
-    if market_cap <= 0:
-        return False
-
-    # Calculate the order of magnitude of the market cap
-    magnitude = 10 ** (int(market_cap).bit_length() - 1) if market_cap >= 1 else 1
-
-    # Generate psychological levels dynamically
-    psychological_levels = [
-        magnitude,           # e.g., 1,000,000
-        magnitude * 2,       # e.g., 2,000,000
-        magnitude * 5,       # e.g., 5,000,000
-        magnitude * 10,      # e.g., 10,000,000
-        magnitude * 20,      # e.g., 20,000,000
-        magnitude * 50,      # e.g., 50,000,000
-        magnitude * 100,     # e.g., 100,000,000
-    ]
-
-    for level in psychological_levels:
-        lower_bound = level * (1 - threshold_percentage)
-        upper_bound = level * (1 + threshold_percentage)
-        if lower_bound <= market_cap <= upper_bound:
-            return True
-    return False
-
-
 def fetch_pair_data(mint_address: str):
     """
     Fetch pair data from the dexscreener API using the token's mint address.
@@ -53,76 +22,49 @@ def fetch_pair_data(mint_address: str):
     else:
         raise Exception(f"Error fetching data from {url}")
 
-
 def predict_upward_movement(pair, debug=False):
     """
-    Score the coin based on short-term metrics for a memecoin.
+    Score the coin based on short-term metrics for volume and m5 buy/sell ratio.
 
     Key metrics considered:
-      - Transaction Imbalance (m5 and h1 buy/sell ratios)
-      - Short-Term Price Change (m5 and h1)
-      - 5-Minute Volume (to gauge immediate trading activity)
-      - Liquidity Check (to ensure market depth for execution)
+      - m5 Transaction Imbalance
+      - 5-Minute Volume
 
-    The higher the score, the higher the confidence that the coin may achieve a 20%
-    upward move in the near term.
+    Returns:
+      - bool: Prediction if upward movement is likely
+      - float: Score indicating confidence in prediction
     """
     score = 0
     details = {}
 
-    # 1. Transaction Imbalance: Focus on m5 and h1
+    # 1. Transaction Imbalance: Focus on m5
     try:
         m5_buys = pair["txns"]["m5"]["buys"]
         m5_sells = pair["txns"]["m5"]["sells"]
-        h1_buys = pair["txns"]["h1"]["buys"]
-        h1_sells = pair["txns"]["h1"]["sells"]
     except KeyError:
-        return False, "Missing transaction data"
+        return False, "Missing transaction data for m5"
 
     # Avoid division by zero
     m5_ratio = m5_buys / (m5_sells if m5_sells > 0 else 1)
-    h1_ratio = h1_buys / (h1_sells if h1_sells > 0 else 1)
     details["m5_ratio"] = m5_ratio
-    details["h1_ratio"] = h1_ratio
 
-    if m5_ratio >= 1.4:
+    if m5_ratio >= 1.3:
         score += 1
-    if h1_ratio >= 1.2:
-        score += 0.5
 
-    # 2. Price Change Momentum: Look at m5 and h1 price changes
-    price_change_m5 = pair.get("priceChange", {}).get("m5", 0)
-    price_change_h1 = pair.get("priceChange", {}).get("h1", 0)
-    details["price_change_m5"] = price_change_m5
-    details["price_change_h1"] = price_change_h1
-
-    if price_change_m5 > 0:
-        score += 0.5
-    if price_change_h1 > 0:
-        score += 0.5
-
-    # 3. Short-Term Volume: Use the 5-minute volume for immediate activity
+    # 2. Short-Term Volume: Use the 5-minute volume for immediate activity
     m5_volume = pair.get("volume", {}).get("m5", 0)
     details["m5_volume"] = m5_volume
 
-    SHORT_TERM_VOLUME_THRESHOLD = 500000  # Example threshold value
+    SHORT_TERM_VOLUME_THRESHOLD = 100000  # Example threshold value
     if m5_volume >= SHORT_TERM_VOLUME_THRESHOLD:
         score += 2
-
-    # 4. Liquidity Check: Ensure sufficient liquidity exists
-    liquidity_usd = pair.get("liquidity", {}).get("usd", 0)
-    details["liquidity_usd"] = liquidity_usd
-    LIQUIDITY_THRESHOLD = 100000
-    if liquidity_usd >= LIQUIDITY_THRESHOLD:
-        score += 0.5
 
     if debug:
         print("Debug Details:", json.dumps(details, indent=2))
 
-    THRESHOLD_SCORE = 4
+    THRESHOLD_SCORE = 3
     prediction = score >= THRESHOLD_SCORE
     return prediction, score
-
 
 async def listen_for_events(bot: TradingBot, scanner: TokenScanner):
     """Main event loop for processing trading signals"""
@@ -160,14 +102,6 @@ async def listen_for_events(bot: TradingBot, scanner: TokenScanner):
                     bot.logger.info(f"Skipping {token_address} (MC: ${market_cap:,.2f})")
                     continue
 
-                # Check if near psychological zone
-                if is_near_psychological_zone(market_cap):
-                    bot.logger.info(
-                        f"Skipping {token_address} - Too close to psychological zone "
-                        f"(MC: ${market_cap:,.2f})"
-                    )
-                    continue
-
                 # === Final Check: Pair data prediction based on mint address ===
                 try:
                     loop = asyncio.get_event_loop()
@@ -202,7 +136,6 @@ async def listen_for_events(bot: TradingBot, scanner: TokenScanner):
             bot.logger.error(f"Event loop error: {str(e)}")
             await asyncio.sleep(5)
 
-
 async def main():
     try:
         # Load configuration from .env
@@ -229,9 +162,12 @@ async def main():
         if 'bot' in locals():
             await bot.close()
 
-
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
+
 
 
 
@@ -242,3 +178,4 @@ if __name__ == "__main__":
 
   #screen -X -S cortexV1 quit
   #screen -ls | awk '/[0-9]+\./ {print $1}' | xargs -I {} screen -X -S {} quit
+
