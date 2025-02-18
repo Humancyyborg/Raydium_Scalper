@@ -171,11 +171,3 @@ if __name__ == "__main__":
 
 
 
-
-#ec2-18-117-187-176.us-east-2.compute.amazonaws.com
-
- #ssh -i "enigma-key.pem" ubuntu@ec2-18-117-187-176.us-east-2.compute.amazonaws.com
-
-  #screen -X -S cortexV1 quit
-  #screen -ls | awk '/[0-9]+\./ {print $1}' | xargs -I {} screen -X -S {} quit
-

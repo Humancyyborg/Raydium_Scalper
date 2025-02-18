@@ -141,9 +141,4 @@ if __name__ == "__main__":
     asyncio.run(main())
 
 
-# # Telegram settings
-# TELEGRAM_API_ID = "26984792"
-# TELEGRAM_API_HASH = "727baed224795a997005118ccee6c20c"
-# TELEGRAM_CHAT_USERNAME = "@enigma_call"
-
 
